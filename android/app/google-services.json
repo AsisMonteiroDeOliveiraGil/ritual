@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "495272599413",
+    "project_id": "ritual-app-asis",
+    "storage_bucket": "ritual-app-asis.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:495272599413:android:33789bf6e355c3f37bfd3c",
+        "android_client_info": {
+          "package_name": "com.example.ritual"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAkym-M77rKxtPll-Y-u43uC9RUx4nVlA0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

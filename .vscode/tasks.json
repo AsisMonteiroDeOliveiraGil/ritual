@@ -1,0 +1,168 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "run_web_mobile_1",
+      "type": "shell",
+      "command": "cd /Users/asis/flutter_projects/ritual && ./scripts/run/run_web_mobile_1.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "echo": false,
+        "focus": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "run_web_mobile_2",
+      "type": "shell",
+      "command": "cd /Users/asis/flutter_projects/ritual && ./scripts/run/run_web_mobile_2.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "echo": false,
+        "focus": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "run_web_chrome_mobile_size_1",
+      "type": "shell",
+      "command": "cd /Users/asis/flutter_projects/ritual && ./scripts/run/run_web_chrome_mobile_size_1.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "echo": false,
+        "focus": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "run_web_chrome_mobile_size_2",
+      "type": "shell",
+      "command": "cd /Users/asis/flutter_projects/ritual && ./scripts/run/run_web_chrome_mobile_size_2.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "echo": false,
+        "focus": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "run_android_emulator",
+      "type": "shell",
+      "command": "cd /Users/asis/flutter_projects/ritual && ./scripts/run/run_android_emulator.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "echo": false,
+        "focus": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "run_ios_emulator",
+      "type": "shell",
+      "command": "cd /Users/asis/flutter_projects/ritual && ./scripts/run/run_ios_emulator.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "echo": false,
+        "focus": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "run_android_and_ios_emulator",
+      "type": "shell",
+      "command": "cd /Users/asis/flutter_projects/ritual && ./scripts/run/run_android_and_ios_emulator.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "echo": false,
+        "focus": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "reposition_windows",
+      "type": "shell",
+      "command": "cd /Users/asis/flutter_projects/ritual && ./scripts/run/reposition_windows.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "insert",
+      "type": "shell",
+      "command": "cd /Users/asis/flutter_projects/ritual && npm run i",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "push",
+      "type": "shell",
+      "command": "cd /Users/asis/flutter_projects/ritual && npm run p",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "deploy_web",
+      "type": "shell",
+      "command": "cd /Users/asis/flutter_projects/ritual && npm run dw",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "seed_all_users",
+      "type": "shell",
+      "command": "cd /Users/asis/flutter_projects/ritual/functions && npm run s",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "delete",
+      "type": "shell",
+      "command": "cd /Users/asis/flutter_projects/ritual && npm run d",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "run_resize",
+      "type": "shell",
+      "command": "cd /Users/asis/flutter_projects/ritual && ./scripts/resize_emulators.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "awaked",
+      "type": "shell",
+      "command": "cd /Users/asis/flutter_projects/ritual && ./scripts/run/run_awaked.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always"
+      }
+    }
+  ]
+}
