@@ -13,6 +13,7 @@ import 'package:ritual/features/habits/presentation/screens/gym_screen.dart';
 import 'package:ritual/features/habits/presentation/screens/settings_screen.dart';
 import 'package:ritual/features/habits/presentation/screens/stats_screen.dart';
 import 'package:ritual/features/habits/presentation/screens/today_screen.dart';
+import 'package:ritual/features/digital_control/presentation/screens/digital_control_screen.dart';
 import 'package:ritual/features/habits/presentation/providers/today_selected_date_provider.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -40,6 +41,10 @@ GoRouter buildAppRouter() {
           GoRoute(
             path: '/gym',
             builder: (context, state) => const GymScreen(),
+          ),
+          GoRoute(
+            path: '/control',
+            builder: (context, state) => const DigitalControlScreen(),
           ),
         ],
       ),
@@ -94,6 +99,7 @@ class _ShellScaffold extends StatelessWidget {
     if (location.startsWith('/habits')) return 1;
     if (location.startsWith('/stats')) return 2;
     if (location.startsWith('/gym')) return 3;
+    if (location.startsWith('/control')) return 4;
     return 0;
   }
 
@@ -126,6 +132,9 @@ class _ShellScaffold extends StatelessWidget {
             case 3:
               context.go('/gym');
               break;
+            case 4:
+              context.go('/control');
+              break;
           }
         },
         backgroundColor: const Color(0xFF151515),
@@ -143,6 +152,10 @@ class _ShellScaffold extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Icon(Icons.fitness_center),
             label: 'Gimnasio',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shield_moon_outlined),
+            label: 'Control',
           ),
         ],
       ),
