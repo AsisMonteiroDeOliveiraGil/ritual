@@ -95,6 +95,10 @@ class FirestoreHabitsRepository implements HabitsRepository {
   Future<void> updateHabit({
     required String habitId,
     String? name,
+    String? haId,
+    bool setHaId = false,
+    int? order,
+    bool setOrder = false,
     String? description,
     int? priority,
     DateTime? startDate,
@@ -112,6 +116,10 @@ class FirestoreHabitsRepository implements HabitsRepository {
     return _dataSource.updateHabit(
       habitId: habitId,
       name: name,
+      haId: haId,
+      setHaId: setHaId,
+      order: order,
+      setOrder: setOrder,
       description: description,
       priority: priority,
       startDate: startDate,

@@ -14,7 +14,9 @@ import 'package:ritual/features/habits/presentation/screens/settings_screen.dart
 import 'package:ritual/features/habits/presentation/screens/stats_screen.dart';
 import 'package:ritual/features/habits/presentation/screens/today_screen.dart';
 import 'package:ritual/features/digital_control/presentation/screens/digital_control_screen.dart';
+import 'package:ritual/features/habits/presentation/providers/habits_providers.dart';
 import 'package:ritual/features/habits/presentation/providers/today_selected_date_provider.dart';
+import 'package:ritual/core/time/date_key.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -76,14 +78,26 @@ GoRouter buildAppRouter() {
         path: '/habit/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          return HabitDetailScreen(habitId: id);
+          final tab = state.uri.queryParameters['tab'];
+          final initialTab = tab == 'editar'
+              ? 2
+              : tab == 'estadisticas'
+              ? 1
+              : 0;
+          return HabitDetailScreen(habitId: id, initialTab: initialTab);
         },
       ),
       GoRoute(
         path: '/habit/:id/manage',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          return HabitManageScreen(habitId: id);
+          final tab = state.uri.queryParameters['tab'];
+          final initialTab = tab == 'editar'
+              ? 2
+              : tab == 'estadisticas'
+              ? 1
+              : 0;
+          return HabitManageScreen(habitId: id, initialTab: initialTab);
         },
       ),
     ],
@@ -109,6 +123,7 @@ class _ShellScaffold extends StatelessWidget {
     final index = _locationToIndex(location);
 
     return Scaffold(
+      backgroundColor: const Color(0xFF0B0D11),
       body: child,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: index,
@@ -116,7 +131,7 @@ class _ShellScaffold extends StatelessWidget {
           switch (value) {
             case 0:
               if (location.startsWith('/today')) {
-                final now = DateTime.now();
+                final now = logicalDateFromDateTime(DateTime.now());
                 ProviderScope.containerOf(context)
                     .read(todaySelectedDateProvider.notifier)
                     .state = DateTime(now.year, now.month, now.day);
@@ -124,6 +139,12 @@ class _ShellScaffold extends StatelessWidget {
               context.go('/today');
               break;
             case 1:
+              if (location.startsWith('/habits')) {
+                final container = ProviderScope.containerOf(context);
+                final current = container.read(habitsWeekResetSignalProvider);
+                container.read(habitsWeekResetSignalProvider.notifier).state =
+                    current + 1;
+              }
               context.go('/habits');
               break;
             case 2:
@@ -144,7 +165,10 @@ class _ShellScaffold extends StatelessWidget {
         elevation: 0,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.today), label: 'Hoy'),
-          BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'Hábitos'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.list_alt),
+            label: 'Hábitos',
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart),
             label: 'Estadísticas',

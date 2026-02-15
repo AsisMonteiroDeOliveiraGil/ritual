@@ -64,8 +64,34 @@ class _HabitDefineScreenState extends ConsumerState<HabitDefineScreen> {
                     controller: _habitController,
                     hint: '',
                     focused: true,
-                    onChanged: (value) =>
-                        ref.read(newHabitDraftProvider.notifier).setName(value),
+                    onChanged: (value) {
+                      final generatedHaId = value
+                          .trim()
+                          .replaceAll(RegExp(r'\s+'), '_');
+                      final normalizedHaId = generatedHaId.toLowerCase();
+                      ref.read(newHabitDraftProvider.notifier).setName(value);
+                      ref
+                          .read(newHabitDraftProvider.notifier)
+                          .setDescription(value);
+                      ref
+                          .read(newHabitDraftProvider.notifier)
+                          .setHaId(normalizedHaId);
+                      if (_descriptionController.text != value) {
+                        _descriptionController.value = TextEditingValue(
+                          text: value,
+                          selection:
+                              TextSelection.collapsed(offset: value.length),
+                        );
+                      }
+                      if (_haIdController.text != normalizedHaId) {
+                        _haIdController.value = TextEditingValue(
+                          text: normalizedHaId,
+                          selection: TextSelection.collapsed(
+                            offset: normalizedHaId.length,
+                          ),
+                        );
+                      }
+                    },
                   ),
                   const SizedBox(height: 10),
                   const Center(
@@ -93,8 +119,18 @@ class _HabitDefineScreenState extends ConsumerState<HabitDefineScreen> {
                     controller: _haIdController,
                     hint: 'p. ej., piel_karen',
                     focused: false,
-                    onChanged: (value) =>
-                        ref.read(newHabitDraftProvider.notifier).setHaId(value),
+                    onChanged: (value) {
+                      final normalized = value.toLowerCase();
+                      ref.read(newHabitDraftProvider.notifier).setHaId(normalized);
+                      if (_haIdController.text != normalized) {
+                        _haIdController.value = TextEditingValue(
+                          text: normalized,
+                          selection: TextSelection.collapsed(
+                            offset: normalized.length,
+                          ),
+                        );
+                      }
+                    },
                   ),
                 ],
               ),
@@ -190,8 +226,13 @@ class _BottomBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).maybePop(),
+          TextButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(32, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             child: const Text(
               'ATRÁS',
               style: TextStyle(
@@ -211,8 +252,13 @@ class _BottomBar extends StatelessWidget {
             ],
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: () => context.push('/habit/new/frequency'),
+          TextButton(
+            onPressed: () => context.push('/habit/new/frequency'),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(32, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             child: const Text(
               'SIGUIENTE',
               style: TextStyle(

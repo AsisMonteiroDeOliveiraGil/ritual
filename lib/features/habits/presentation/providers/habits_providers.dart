@@ -86,7 +86,7 @@ final habitStatsProvider =
 final habitWeekCompletionsProvider =
     StreamProvider.family<List<Completion>, String>((ref, habitId) async* {
   final repo = await ref.watch(habitsRepositoryProvider.future);
-  final now = DateTime.now();
+  final now = logicalDateFromDateTime(DateTime.now());
   final from = dateKeyFromDateTime(
     DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6)),
   );
@@ -94,7 +94,49 @@ final habitWeekCompletionsProvider =
   yield* repo.watchCompletionsRange(habitId, from, to);
 });
 
+final habitWeekCompletionsByOffsetProvider = StreamProvider.family<
+    List<Completion>,
+    ({String habitId, int weekOffset})>((ref, args) async* {
+  final repo = await ref.watch(habitsRepositoryProvider.future);
+  final now = logicalDateFromDateTime(DateTime.now()).add(
+    Duration(days: args.weekOffset * 7),
+  );
+  final from = dateKeyFromDateTime(
+    DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6)),
+  );
+  final to = dateKeyFromDateTime(DateTime(now.year, now.month, now.day));
+  yield* repo.watchCompletionsRange(args.habitId, from, to);
+});
+
+final habitMonthCompletionsProvider = StreamProvider.family<
+    List<Completion>,
+    ({String habitId, DateTime month})>((ref, args) async* {
+  final repo = await ref.watch(habitsRepositoryProvider.future);
+  final monthStart = DateTime(args.month.year, args.month.month, 1);
+  final monthEnd = DateTime(
+    args.month.year,
+    args.month.month,
+    DateTime(args.month.year, args.month.month + 1, 0).day,
+  );
+  final from = dateKeyFromDateTime(monthStart);
+  final to = dateKeyFromDateTime(monthEnd);
+  yield* repo.watchCompletionsRange(args.habitId, from, to);
+});
+
+final habitCompletionsRangeProvider = StreamProvider.family<
+    List<Completion>,
+    ({String habitId, String fromDateKey, String toDateKey})>((ref, args) async* {
+  final repo = await ref.watch(habitsRepositoryProvider.future);
+  yield* repo.watchCompletionsRange(
+    args.habitId,
+    args.fromDateKey,
+    args.toDateKey,
+  );
+});
+
 final seedHabitsProvider = FutureProvider<SeedHabitsIfEmpty>((ref) async {
   final repo = await ref.watch(habitsRepositoryProvider.future);
   return SeedHabitsIfEmpty(repo);
 });
+
+final habitsWeekResetSignalProvider = StateProvider<int>((ref) => 0);

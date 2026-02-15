@@ -42,6 +42,13 @@ admin.initializeApp();
 const sharedSecret = (0, params_1.defineSecret)('HA_SHARED_SECRET');
 const fixedUid = '9fAbFEzg0KTBCs5jfTlNOsvEH5u2';
 exports.issueCustomToken = (0, https_1.onRequest)({ secrets: [sharedSecret] }, async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
     if (req.method !== 'POST') {
         res.status(405).json({ error: 'Method not allowed' });
         return;

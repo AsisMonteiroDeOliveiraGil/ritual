@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ritual/core/time/date_key.dart';
 import 'package:ritual/core/ui/icon_mapper.dart';
 import 'package:ritual/features/habits/domain/entities/habit.dart';
 import 'package:ritual/features/habits/domain/entities/habit_stats.dart';
@@ -8,8 +11,13 @@ import 'package:ritual/features/habits/presentation/providers/habits_providers.d
 
 class HabitManageScreen extends ConsumerWidget {
   final String habitId;
+  final int initialTab;
 
-  const HabitManageScreen({super.key, required this.habitId});
+  const HabitManageScreen({
+    super.key,
+    required this.habitId,
+    this.initialTab = 0,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -31,6 +39,7 @@ class HabitManageScreen extends ConsumerWidget {
 
     return DefaultTabController(
       length: 3,
+      initialIndex: initialTab.clamp(0, 2),
       child: Scaffold(
         backgroundColor: background,
         appBar: AppBar(
@@ -87,26 +96,36 @@ class HabitManageScreen extends ConsumerWidget {
           data: (_) {
             if (habit == null) {
               return const Center(
-                child: Text('Hábito no encontrado.', style: TextStyle(color: Colors.white70)),
+                child: Text(
+                  'Hábito no encontrado.',
+                  style: TextStyle(color: Colors.white70),
+                ),
               );
             }
             return TabBarView(
               children: [
-                const _CalendarPlaceholder(),
+                _ManageCalendarTab(habit: habit!),
                 stats.when(
                   data: (s) => _StatsContent(stats: s),
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
                   error: (err, _) => Center(
-                    child: Text('Error: $err', style: const TextStyle(color: Colors.white70)),
+                    child: Text(
+                      'Error: $err',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
                   ),
                 ),
-                _HabitEditTab(habit: habit!),
+                HabitEditTab(habit: habit!),
               ],
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, _) => Center(
-            child: Text('Error: $err', style: const TextStyle(color: Colors.white70)),
+            child: Text(
+              'Error: $err',
+              style: const TextStyle(color: Colors.white70),
+            ),
           ),
         ),
       ),
@@ -114,49 +133,534 @@ class HabitManageScreen extends ConsumerWidget {
   }
 }
 
-class _CalendarPlaceholder extends StatelessWidget {
-  const _CalendarPlaceholder();
+class _ManageCalendarTab extends ConsumerStatefulWidget {
+  final Habit habit;
+
+  const _ManageCalendarTab({required this.habit});
+
+  @override
+  ConsumerState<_ManageCalendarTab> createState() => _ManageCalendarTabState();
+}
+
+class _ManageCalendarTabState extends ConsumerState<_ManageCalendarTab> {
+  late DateTime _visibleMonth;
+  late final PageController _monthPageController;
+  Timer? _midnightTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _visibleMonth = DateTime(now.year, now.month);
+    _monthPageController = PageController(initialPage: 1);
+    _scheduleMidnightRefresh();
+  }
+
+  @override
+  void dispose() {
+    _midnightTimer?.cancel();
+    _monthPageController.dispose();
+    super.dispose();
+  }
+
+  void _scheduleMidnightRefresh() {
+    _midnightTimer?.cancel();
+    final now = DateTime.now();
+    final next = nextLogicalDayBoundary(now);
+    _midnightTimer = Timer(next.difference(now), () {
+      if (!mounted) return;
+      setState(() {
+        final nowDate = logicalDateFromDateTime(DateTime.now());
+        _visibleMonth = DateTime(nowDate.year, nowDate.month);
+      });
+      _scheduleMidnightRefresh();
+    });
+  }
+
+  Future<void> _toggle(DateTime date, bool isDone) async {
+    final key = dateKeyFromDateTime(date);
+    if (isDone) {
+      final unmark = await ref.read(unmarkHabitDoneProvider.future);
+      await unmark(widget.habit.id, key);
+      return;
+    }
+    final mark = await ref.read(markHabitDoneProvider.future);
+    await mark(widget.habit.id, key, source: 'manage_calendar');
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        'Calendario próximamente',
-        style: TextStyle(color: Colors.white60),
+    final monthCompletions = ref.watch(
+      habitMonthCompletionsProvider(
+        (habitId: widget.habit.id, month: _visibleMonth),
+      ),
+    );
+    final prevMonthCompletions = ref.watch(
+      habitMonthCompletionsProvider(
+        (
+          habitId: widget.habit.id,
+          month: DateTime(_visibleMonth.year, _visibleMonth.month - 1),
+        ),
+      ),
+    );
+    final nextMonthCompletions = ref.watch(
+      habitMonthCompletionsProvider(
+        (
+          habitId: widget.habit.id,
+          month: DateTime(_visibleMonth.year, _visibleMonth.month + 1),
+        ),
+      ),
+    );
+    final stats = ref.watch(habitStatsProvider(widget.habit.id));
+    if (monthCompletions.isLoading ||
+        prevMonthCompletions.isLoading ||
+        nextMonthCompletions.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (monthCompletions.hasError ||
+        prevMonthCompletions.hasError ||
+        nextMonthCompletions.hasError) {
+      return Center(
+        child: Text(
+          'Error: ${monthCompletions.error ?? prevMonthCompletions.error ?? nextMonthCompletions.error}',
+          style: const TextStyle(color: Colors.white70),
+        ),
+      );
+    }
+
+    return PageView(
+      controller: _monthPageController,
+      onPageChanged: (page) {
+        if (page == 1) return;
+        setState(() {
+          _visibleMonth = DateTime(
+            _visibleMonth.year,
+            _visibleMonth.month + (page == 2 ? 1 : -1),
+          );
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _monthPageController.hasClients) {
+            _monthPageController.jumpToPage(1);
+          }
+        });
+      },
+      children: [
+        _ManageCalendarContent(
+          habit: widget.habit,
+          visibleMonth: DateTime(_visibleMonth.year, _visibleMonth.month - 1),
+          doneKeys: (prevMonthCompletions.asData?.value ?? const [])
+              .map((e) => e.dateKey)
+              .toSet(),
+          streakDays: stats.asData?.value.currentStreak ?? 0,
+          onPrev: () => _monthPageController.animateToPage(
+            0,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+          ),
+          onNext: () => _monthPageController.animateToPage(
+            2,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+          ),
+          onToggle: _toggle,
+        ),
+        _ManageCalendarContent(
+          habit: widget.habit,
+          visibleMonth: _visibleMonth,
+          doneKeys: (monthCompletions.asData?.value ?? const [])
+              .map((e) => e.dateKey)
+              .toSet(),
+          streakDays: stats.asData?.value.currentStreak ?? 0,
+          onPrev: () => _monthPageController.animateToPage(
+            0,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+          ),
+          onNext: () => _monthPageController.animateToPage(
+            2,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+          ),
+          onToggle: _toggle,
+        ),
+        _ManageCalendarContent(
+          habit: widget.habit,
+          visibleMonth: DateTime(_visibleMonth.year, _visibleMonth.month + 1),
+          doneKeys: (nextMonthCompletions.asData?.value ?? const [])
+              .map((e) => e.dateKey)
+              .toSet(),
+          streakDays: stats.asData?.value.currentStreak ?? 0,
+          onPrev: () => _monthPageController.animateToPage(
+            0,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+          ),
+          onNext: () => _monthPageController.animateToPage(
+            2,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+          ),
+          onToggle: _toggle,
+        ),
+      ],
+    );
+  }
+}
+
+class _ManageCalendarContent extends StatelessWidget {
+  final Habit habit;
+  final DateTime visibleMonth;
+  final Set<String> doneKeys;
+  final int streakDays;
+  final VoidCallback onPrev;
+  final VoidCallback onNext;
+  final Future<void> Function(DateTime, bool) onToggle;
+
+  const _ManageCalendarContent({
+    required this.habit,
+    required this.visibleMonth,
+    required this.doneKeys,
+    required this.streakDays,
+    required this.onPrev,
+    required this.onNext,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final monthGrid = _buildMonthGrid(visibleMonth);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      children: [
+        Column(
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  onPressed: onPrev,
+                  icon: const Icon(
+                    Icons.chevron_left,
+                    color: Color(0xFFC63C54),
+                    size: 26,
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text(
+                        _monthName(visibleMonth.month),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      Text(
+                        '${visibleMonth.year}',
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: onNext,
+                  icon: const Icon(
+                    Icons.chevron_right,
+                    color: Color(0xFFC63C54),
+                    size: 26,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            const _ManageWeekdayHeader(),
+            const SizedBox(height: 8),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: monthGrid.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                crossAxisSpacing: 6,
+                mainAxisSpacing: 6,
+                childAspectRatio: 1.0,
+              ),
+              itemBuilder: (context, index) {
+                final date = monthGrid[index];
+                final dateKey = dateKeyFromDateTime(date);
+                final inMonth = date.month == visibleMonth.month;
+                final isDone = doneKeys.contains(dateKey);
+                final now = logicalDateFromDateTime(DateTime.now());
+                final isToday =
+                    date.year == now.year &&
+                    date.month == now.month &&
+                    date.day == now.day;
+                final isFuture = DateTime(
+                  date.year,
+                  date.month,
+                  date.day,
+                ).isAfter(DateTime(now.year, now.month, now.day));
+                return GestureDetector(
+                  onTap: () async {
+                    if (!inMonth || isFuture) return;
+                    await onToggle(date, isDone);
+                  },
+                  child: _ManageDayCell(
+                    day: date.day,
+                    inMonth: inMonth,
+                    isDone: isDone,
+                    isToday: isToday,
+                    isFuture: isFuture,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        _ManageInfoCard(
+          icon: Icons.link,
+          label: 'Racha',
+          content: '$streakDays DÍAS',
+          contentColor: const Color(0xFFC63C54),
+        ),
+        const SizedBox(height: 10),
+        _ManageInfoCard(
+          icon: Icons.info_outline,
+          label: 'Descripción',
+          content: (habit.description?.trim().isNotEmpty ?? false)
+              ? habit.description!.trim()
+              : 'Sin descripción',
+        ),
+        const SizedBox(height: 10),
+        const _ManageInfoCard(
+          icon: Icons.chat_bubble_outline,
+          label: 'Notas',
+          content: 'Sin notas para este mes',
+        ),
+      ],
+    );
+  }
+}
+
+class _ManageWeekdayHeader extends StatelessWidget {
+  const _ManageWeekdayHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    const labels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    return Row(
+      children: labels
+          .map(
+            (label) => Expanded(
+              child: Center(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: (label == 'Dom' || label == 'Sáb')
+                        ? const Color(0xFFC63C54)
+                        : Colors.white60,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _ManageDayCell extends StatelessWidget {
+  final int day;
+  final bool inMonth;
+  final bool isDone;
+  final bool isToday;
+  final bool isFuture;
+
+  const _ManageDayCell({
+    required this.day,
+    required this.inMonth,
+    required this.isDone,
+    required this.isToday,
+    required this.isFuture,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const doneColor = Color(0xFFFFB400);
+    const todayColor = Color(0xFFC63C54);
+    Color border = Colors.transparent;
+    if (inMonth) {
+      if (isDone) {
+        border = doneColor;
+      } else if (isToday) {
+        border = todayColor;
+      } else if (isFuture) {
+        border = const Color(0xFF252933);
+      } else {
+        border = const Color(0xFF2A2E38);
+      }
+    }
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: border, width: 2),
+      ),
+      child: Center(
+        child: Text(
+          '$day',
+          style: TextStyle(
+            color: !inMonth
+                ? Colors.white24
+                : isFuture
+                    ? Colors.white38
+                    : Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ),
     );
   }
 }
 
-class _HabitEditTab extends ConsumerWidget {
+class _ManageInfoCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String content;
+  final Color contentColor;
+
+  const _ManageInfoCard({
+    required this.icon,
+    required this.label,
+    required this.content,
+    this.contentColor = Colors.white70,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0E1015),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF171A21)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: const Color(0xFFC63C54), size: 22),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C1F26),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  label,
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+              ),
+              const Spacer(),
+              const SizedBox(width: 22),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            content,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: contentColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+List<DateTime> _buildMonthGrid(DateTime month) {
+  final first = DateTime(month.year, month.month, 1);
+  final firstWeekdayMondayBased = first.weekday - 1;
+  final start = first.subtract(Duration(days: firstWeekdayMondayBased));
+  return List.generate(42, (i) => start.add(Duration(days: i)));
+}
+
+String _monthName(int month) {
+  switch (month) {
+    case 1:
+      return 'Enero';
+    case 2:
+      return 'Febrero';
+    case 3:
+      return 'Marzo';
+    case 4:
+      return 'Abril';
+    case 5:
+      return 'Mayo';
+    case 6:
+      return 'Junio';
+    case 7:
+      return 'Julio';
+    case 8:
+      return 'Agosto';
+    case 9:
+      return 'Septiembre';
+    case 10:
+      return 'Octubre';
+    case 11:
+      return 'Noviembre';
+    case 12:
+      return 'Diciembre';
+    default:
+      return '';
+  }
+}
+
+class HabitEditTab extends ConsumerWidget {
   final Habit habit;
 
-  const _HabitEditTab({required this.habit});
+  const HabitEditTab({super.key, required this.habit});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     const accent = Color(0xFFC63C54);
     const surface = Color(0xFF141414);
     const dividerColor = Color(0xFF1F1F1F);
-    final reminderCount = habit.reminderTimes?.length ?? habit.reminderCount ?? 0;
+    final reminderCount =
+        habit.reminderTimes?.length ?? habit.reminderCount ?? 0;
     final priority = habit.priority ?? 1;
     final description =
         (habit.description == null || habit.description!.trim().isEmpty)
-            ? 'Sin descripción'
-            : habit.description!.trim();
+        ? 'Sin descripción'
+        : habit.description!.trim();
+    final haId = (habit.haId == null || habit.haId!.trim().isEmpty)
+        ? 'Sin HA ID'
+        : habit.haId!.trim();
     final categoryLabel =
         (habit.categoryLabel == null || habit.categoryLabel!.trim().isEmpty)
-            ? 'Sin categoría'
-            : habit.categoryLabel!.trim();
+        ? 'Sin categoría'
+        : habit.categoryLabel!.trim();
     final categoryColor = habit.categoryColor != null
         ? Color(habit.categoryColor!)
         : const Color(0xFF2A2A2A);
-    final categoryLabelColor =
-        categoryLabel == 'Sin categoría' ? Colors.white38 : Colors.orangeAccent;
+    final categoryLabelColor = categoryLabel == 'Sin categoría'
+        ? Colors.white38
+        : Colors.orangeAccent;
     final frequencyLabel =
         (habit.frequencyLabel == null || habit.frequencyLabel!.trim().isEmpty)
-            ? 'Cada día'
-            : habit.frequencyLabel!.trim();
+        ? 'Cada día'
+        : habit.frequencyLabel!.trim();
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -168,6 +672,19 @@ class _HabitEditTab extends ConsumerWidget {
           trailing: Text(
             habit.name,
             style: const TextStyle(color: Colors.white70),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const Divider(color: dividerColor, height: 28),
+        _EditRow(
+          icon: Icons.link,
+          title: 'HA ID',
+          onTap: () => _editHaId(context, ref),
+          trailing: Text(
+            haId,
+            style: TextStyle(
+              color: haId == 'Sin HA ID' ? Colors.white38 : Colors.white70,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -238,7 +755,10 @@ class _HabitEditTab extends ConsumerWidget {
               children: [
                 Text(
                   priority.toString(),
-                  style: const TextStyle(color: accent, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: accent,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(width: 6),
                 const Icon(Icons.flag, size: 16, color: accent),
@@ -251,7 +771,10 @@ class _HabitEditTab extends ConsumerWidget {
           icon: Icons.repeat,
           title: 'Frecuencia',
           onTap: () => _editFrequency(context, ref),
-          trailing: Text(frequencyLabel, style: const TextStyle(color: Colors.white54)),
+          trailing: Text(
+            frequencyLabel,
+            style: const TextStyle(color: Colors.white54),
+          ),
         ),
         const Divider(color: dividerColor, height: 28),
         _EditRow(
@@ -268,7 +791,9 @@ class _HabitEditTab extends ConsumerWidget {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _DatePill(text: habit.endDate == null ? '-' : _formatDate(habit.endDate)),
+              _DatePill(
+                text: habit.endDate == null ? '-' : _formatDate(habit.endDate),
+              ),
               if (habit.endDate != null) ...[
                 const SizedBox(width: 10),
                 InkWell(
@@ -305,10 +830,7 @@ class _HabitEditTab extends ConsumerWidget {
           trailing: const SizedBox.shrink(),
         ),
         const SizedBox(height: 16),
-        Container(
-          height: 1,
-          color: surface,
-        ),
+        Container(height: 1, color: surface),
       ],
     );
   }
@@ -320,6 +842,7 @@ class _HabitEditTab extends ConsumerWidget {
       initialValue: habit.name,
     );
     if (result == null) return;
+    if (!context.mounted) return;
     final trimmed = result.trim();
     if (trimmed.isEmpty) {
       _showMessage(context, 'El nombre no puede estar vacío.');
@@ -341,6 +864,21 @@ class _HabitEditTab extends ConsumerWidget {
     await updater(habitId: habit.id, description: result);
   }
 
+  Future<void> _editHaId(BuildContext context, WidgetRef ref) async {
+    final result = await _showTextDialog(
+      context,
+      title: 'HA ID',
+      initialValue: habit.haId ?? '',
+    );
+    if (result == null) return;
+    final updater = await ref.read(updateHabitProvider.future);
+    await updater(
+      habitId: habit.id,
+      haId: result,
+      setHaId: true,
+    );
+  }
+
   Future<void> _editCategory(BuildContext context, WidgetRef ref) async {
     final selected = await showModalBottomSheet<_CategoryOption>(
       context: context,
@@ -354,12 +892,15 @@ class _HabitEditTab extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           shrinkWrap: true,
           itemCount: options.length + 1,
-          separatorBuilder: (_, __) => const Divider(color: Color(0xFF2A2A2A)),
+          separatorBuilder:
+              (context, index) => const Divider(color: Color(0xFF2A2A2A)),
           itemBuilder: (context, index) {
             if (index == 0) {
               return ListTile(
-                leading: const Icon(Icons.remove_circle_outline,
-                    color: Colors.white38),
+                leading: const Icon(
+                  Icons.remove_circle_outline,
+                  color: Colors.white38,
+                ),
                 title: const Text(
                   'Sin categoría',
                   style: TextStyle(color: Colors.white70),
@@ -461,8 +1002,10 @@ class _HabitEditTab extends ConsumerWidget {
                                         times.remove(t);
                                       });
                                     },
-                                    icon: const Icon(Icons.close,
-                                        color: Colors.white38),
+                                    icon: const Icon(
+                                      Icons.close,
+                                      color: Colors.white38,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -476,9 +1019,9 @@ class _HabitEditTab extends ConsumerWidget {
                     onTap: () async {
                       final picked = await showTimePicker(
                         context: context,
-                        initialTime: _parseTime(times.isNotEmpty
-                            ? times.last
-                            : '08:00'),
+                        initialTime: _parseTime(
+                          times.isNotEmpty ? times.last : '08:00',
+                        ),
                       );
                       if (picked == null) return;
                       final value = _formatTime(picked);
@@ -641,7 +1184,8 @@ class _HabitEditTab extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           shrinkWrap: true,
           itemCount: options.length,
-          separatorBuilder: (_, __) => const Divider(color: Color(0xFF2A2A2A)),
+          separatorBuilder:
+              (context, index) => const Divider(color: Color(0xFF2A2A2A)),
           itemBuilder: (context, index) {
             return ListTile(
               title: Text(
@@ -719,6 +1263,7 @@ class _HabitEditTab extends ConsumerWidget {
     if (!confirm) return;
     final resetter = await ref.read(resetHabitProgressProvider.future);
     await resetter(habit.id);
+    if (!context.mounted) return;
     _showMessage(context, 'Progreso reiniciado.');
   }
 
@@ -754,7 +1299,9 @@ class _HabitEditTab extends ConsumerWidget {
             maxLines: multiline ? 4 : 1,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              hintText: multiline ? 'Escribe una descripción' : 'Escribe un nombre',
+              hintText: multiline
+                  ? 'Escribe una descripción'
+                  : 'Escribe un nombre',
               hintStyle: const TextStyle(color: Colors.white38),
               enabledBorder: const UnderlineInputBorder(
                 borderSide: BorderSide(color: Colors.white24),
@@ -767,11 +1314,17 @@ class _HabitEditTab extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('CANCELAR', style: TextStyle(color: Colors.white54)),
+              child: const Text(
+                'CANCELAR',
+                style: TextStyle(color: Colors.white54),
+              ),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(controller.text),
-              child: const Text('GUARDAR', style: TextStyle(color: Color(0xFFC63C54))),
+              child: const Text(
+                'GUARDAR',
+                style: TextStyle(color: Color(0xFFC63C54)),
+              ),
             ),
           ],
         );
@@ -795,11 +1348,17 @@ class _HabitEditTab extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('CANCELAR', style: TextStyle(color: Colors.white54)),
+              child: const Text(
+                'CANCELAR',
+                style: TextStyle(color: Colors.white54),
+              ),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('CONFIRMAR', style: TextStyle(color: Color(0xFFC63C54))),
+              child: const Text(
+                'CONFIRMAR',
+                style: TextStyle(color: Color(0xFFC63C54)),
+              ),
             ),
           ],
         );
@@ -809,9 +1368,9 @@ class _HabitEditTab extends ConsumerWidget {
   }
 
   void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -859,10 +1418,7 @@ class _AccentSquare extends StatelessWidget {
   final int? iconCodePoint;
   final Color color;
 
-  const _AccentSquare({
-    required this.iconCodePoint,
-    required this.color,
-  });
+  const _AccentSquare({required this.iconCodePoint, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -895,7 +1451,10 @@ class _DatePill extends StatelessWidget {
         color: const Color(0xFF2A0F17),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(text, style: const TextStyle(color: accent, fontWeight: FontWeight.w600)),
+      child: Text(
+        text,
+        style: const TextStyle(color: accent, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
@@ -916,10 +1475,7 @@ class _Pill extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          color: accent,
-          fontWeight: FontWeight.w600,
-        ),
+        style: const TextStyle(color: accent, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -1058,19 +1614,39 @@ class _StatsContent extends StatelessWidget {
       children: [
         Row(
           children: [
-            _StatTile(label: 'Racha actual', value: stats.currentStreak.toString(), color: card),
+            _StatTile(
+              label: 'Racha actual',
+              value: stats.currentStreak.toString(),
+              color: card,
+            ),
             const SizedBox(width: 12),
-            _StatTile(label: 'Racha máx', value: stats.maxStreak.toString(), color: card),
+            _StatTile(
+              label: 'Racha máx',
+              value: stats.maxStreak.toString(),
+              color: card,
+            ),
           ],
         ),
         const SizedBox(height: 12),
         Row(
           children: [
-            _StatTile(label: '7 días', value: _percent(stats.percent7), color: card),
+            _StatTile(
+              label: '7 días',
+              value: _percent(stats.percent7),
+              color: card,
+            ),
             const SizedBox(width: 12),
-            _StatTile(label: '30 días', value: _percent(stats.percent30), color: card),
+            _StatTile(
+              label: '30 días',
+              value: _percent(stats.percent30),
+              color: card,
+            ),
             const SizedBox(width: 12),
-            _StatTile(label: '90 días', value: _percent(stats.percent90), color: card),
+            _StatTile(
+              label: '90 días',
+              value: _percent(stats.percent90),
+              color: card,
+            ),
           ],
         ),
       ],
@@ -1103,11 +1679,18 @@ class _StatTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+            ),
             const SizedBox(height: 4),
             Text(
               value,
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),

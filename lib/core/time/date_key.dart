@@ -1,5 +1,7 @@
+const int kLogicalDayCutoffHour = 4;
+
 String dateKeyFromNowEuropeMadrid() {
-  return dateKeyFromDateTime(DateTime.now());
+  return dateKeyFromDateTime(logicalDateFromDateTime(DateTime.now()));
 }
 
 String dateKeyFromTimestampEuropeMadrid(int ms) {
@@ -13,12 +15,29 @@ String dateKeyFromDateTime(DateTime dateTime) {
   return '$y-$m-$d';
 }
 
+DateTime logicalDateFromDateTime(DateTime dateTime, {int cutoffHour = kLogicalDayCutoffHour}) {
+  final shifted = dateTime.subtract(Duration(hours: cutoffHour));
+  return DateTime(shifted.year, shifted.month, shifted.day);
+}
+
+String logicalDateKeyFromNow({DateTime? now, int cutoffHour = kLogicalDayCutoffHour}) {
+  return dateKeyFromDateTime(
+    logicalDateFromDateTime(now ?? DateTime.now(), cutoffHour: cutoffHour),
+  );
+}
+
+DateTime nextLogicalDayBoundary(DateTime now, {int cutoffHour = kLogicalDayCutoffHour}) {
+  final boundary = DateTime(now.year, now.month, now.day, cutoffHour);
+  if (boundary.isAfter(now)) return boundary;
+  return boundary.add(const Duration(days: 1));
+}
+
 DateTime dateFromDateKey(String dateKey) {
   return DateTime.parse(dateKey);
 }
 
 List<String> dateKeysForLastNDays(int days, {DateTime? now}) {
-  final base = now ?? DateTime.now();
+  final base = logicalDateFromDateTime(now ?? DateTime.now());
   return List.generate(days, (index) {
     final dt = DateTime(base.year, base.month, base.day)
         .subtract(Duration(days: days - 1 - index));

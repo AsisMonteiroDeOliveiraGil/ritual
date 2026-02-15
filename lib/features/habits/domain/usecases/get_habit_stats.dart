@@ -9,7 +9,7 @@ class GetHabitStats {
   GetHabitStats(this._repository);
 
   Stream<HabitStats> call(String habitId) {
-    final now = DateTime.now();
+    final now = logicalDateFromDateTime(DateTime.now());
     final from = dateKeyFromDateTime(
       DateTime(now.year, now.month, now.day).subtract(const Duration(days: 364)),
     );

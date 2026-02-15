@@ -331,6 +331,40 @@ kill_port_8080() {
   fi
 }
 
+# Filtra warnings conocidos/no críticos de runtime en Android.
+is_known_non_critical_android_log() {
+  local lower_line="$1"
+  [[ "$lower_line" == *"attempted to start a duplicate background isolate"* ]] && return 0
+  [[ "$lower_line" == *"w/providerinstaller("* ]] && return 0
+  [[ "$lower_line" == *"w/dynamitemodule("* ]] && return 0
+  [[ "$lower_line" == *"w/firestore("* && "$lower_line" == *"failed_precondition"* && "$lower_line" == *"index is currently building"* ]] && return 0
+  [[ "$lower_line" == *"w/firestore("* && "$lower_line" == *"query requires an index"* && "$lower_line" == *"see its status here"* ]] && return 0
+  [[ "$lower_line" == *"unable to log event: analytics library is missing"* ]] && return 0
+  [[ "$lower_line" == *"e/googleapimanager("* && "$lower_line" == *"unknown calling package name 'com.google.android.gms'"* ]] && return 0
+  [[ "$lower_line" == *"w/flagregistrar("* && "$lower_line" == *"phenotype.api is not available on this device"* ]] && return 0
+  return 1
+}
+
+# Detecta errores realmente críticos para marcarlos con ❌.
+should_report_error_log() {
+  local line="$1"
+  local lower_line="$2"
+
+  if is_known_non_critical_android_log "$lower_line"; then
+    return 1
+  fi
+
+  [[ "$line" =~ (^|[^[:alpha:]])Error([[:space:][:punct:]]|$) ]] && return 0
+  [[ "$line" =~ (^|[^[:alpha:]])ERROR([[:space:][:punct:]]|$) ]] && return 0
+  [[ "$line" == *"Unhandled Exception"* ]] && return 0
+  [[ "$line" == *"FATAL EXCEPTION"* ]] && return 0
+  [[ "$line" =~ ^E/ ]] && return 0
+  [[ "$lower_line" == *"gradle task"* && "$lower_line" == *"failed"* ]] && return 0
+  [[ "$lower_line" == *"build failed"* ]] && return 0
+
+  return 1
+}
+
 # Función mejorada para lanzar en dispositivo iOS con timeout
 launch_ios_device() {
   local device_info="$1"
@@ -437,10 +471,7 @@ launch_android_emulator() {
       if [[ "$lower_line" == *"error: null"* ]] || [[ "$lower_line" == *"error null"* ]]; then
         continue
       fi
-      if [[ "$line" =~ (^|[^[:alpha:]])Error([[:space:][:punct:]]|$) ]] ||
-         [[ "$line" =~ (^|[^[:alpha:]])ERROR([[:space:][:punct:]]|$) ]] ||
-         [[ "$lower_line" == *" failed"* ]] ||
-         [[ "$lower_line" == *" exception"* ]]; then
+      if should_report_error_log "$line" "$lower_line"; then
         echo -e "${RED}❌ [Android: $device_name] Error detectado: $line${NC}"
       fi
       
@@ -524,10 +555,7 @@ launch_physical_android() {
       if [[ "$lower_line" == *"error: null"* ]] || [[ "$lower_line" == *"error null"* ]]; then
         continue
       fi
-      if [[ "$line" =~ (^|[^[:alpha:]])Error([[:space:][:punct:]]|$) ]] ||
-         [[ "$line" =~ (^|[^[:alpha:]])ERROR([[:space:][:punct:]]|$) ]] ||
-         [[ "$lower_line" == *" failed"* ]] ||
-         [[ "$lower_line" == *" exception"* ]]; then
+      if should_report_error_log "$line" "$lower_line"; then
         echo -e "${RED}❌ [Android Físico: $device_name] Error detectado: $line${NC}"
       fi
       

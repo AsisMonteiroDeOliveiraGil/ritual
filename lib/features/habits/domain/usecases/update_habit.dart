@@ -8,6 +8,10 @@ class UpdateHabit {
   Future<void> call({
     required String habitId,
     String? name,
+    String? haId,
+    bool setHaId = false,
+    int? order,
+    bool setOrder = false,
     String? description,
     int? priority,
     DateTime? startDate,
@@ -25,6 +29,10 @@ class UpdateHabit {
     return _repository.updateHabit(
       habitId: habitId,
       name: name,
+      haId: haId,
+      setHaId: setHaId,
+      order: order,
+      setOrder: setOrder,
       description: description,
       priority: priority,
       startDate: startDate,

@@ -32,6 +32,10 @@ abstract class HabitsRepository {
   Future<void> updateHabit({
     required String habitId,
     String? name,
+    String? haId,
+    bool setHaId = false,
+    int? order,
+    bool setOrder = false,
     String? description,
     int? priority,
     DateTime? startDate,

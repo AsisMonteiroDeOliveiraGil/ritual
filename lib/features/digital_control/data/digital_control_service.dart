@@ -195,7 +195,7 @@ class DailySummary {
       if (parsed.length == 24) hourly = parsed;
     }
 
-    Map<String, int> _mapAny(dynamic raw) {
+    Map<String, int> mapAny(dynamic raw) {
       if (raw is Map) {
         return raw.map((k, v) => MapEntry(k.toString(), (v as num).toInt()));
       }
@@ -216,7 +216,7 @@ class DailySummary {
           (map['reactive_unlock_count'] as num?)?.toInt() ?? 0,
       reactiveUnlockPct:
           (map['reactive_unlock_pct'] as num?)?.toDouble() ?? 0,
-      reactiveTopApps: _mapAny(map['reactive_top_apps']),
+      reactiveTopApps: mapAny(map['reactive_top_apps']),
       bestStreakMs:
           (map['racha_max_sin_desbloquear_ms'] as num?)?.toInt() ?? 0,
       clean30: (map['bloques_limpios_30'] as num?)?.toInt() ?? 0,
@@ -233,7 +233,7 @@ class DailySummary {
           map['tiempo_medio_hasta_instagram_ms'] == null ? null : (map['tiempo_medio_hasta_instagram_ms'] as num).toInt(),
       totalUsageMs: (map['tiempo_total_uso_ms'] as num?)?.toInt() ?? 0,
       hourlyMs: hourly,
-      topAppsMs: _mapAny(map['top_apps_ms']),
+      topAppsMs: mapAny(map['top_apps_ms']),
     );
   }
 }

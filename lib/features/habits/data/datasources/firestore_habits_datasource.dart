@@ -174,6 +174,10 @@ class FirestoreHabitsDataSource {
   Future<void> updateHabit({
     required String habitId,
     String? name,
+    String? haId,
+    bool setHaId = false,
+    int? order,
+    bool setOrder = false,
     String? description,
     int? priority,
     DateTime? startDate,
@@ -202,6 +206,13 @@ class FirestoreHabitsDataSource {
       payload['description'] =
           trimmed.isEmpty ? FieldValue.delete() : trimmed;
     }
+    if (setHaId) {
+      final trimmed = haId?.trim() ?? '';
+      payload['haId'] = trimmed.isEmpty ? FieldValue.delete() : trimmed;
+    }
+    if (setOrder && order != null) {
+      payload['order'] = order;
+    }
     if (priority != null) {
       payload['priority'] = priority;
     }
@@ -216,8 +227,7 @@ class FirestoreHabitsDataSource {
       payload['reminderCount'] = reminderCount;
     }
     if (setReminderTimes) {
-      payload['reminderTimes'] =
-          reminderTimes == null ? FieldValue.delete() : reminderTimes;
+      payload['reminderTimes'] = reminderTimes ?? FieldValue.delete();
       if (reminderTimes == null) {
         payload['reminderCount'] = FieldValue.delete();
       } else {

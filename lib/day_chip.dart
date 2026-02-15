@@ -139,7 +139,7 @@ class _AnimatedGradientBorderPainter extends CustomPainter {
     final gradient = SweepGradient(
       colors: const [
         Color(0xFFC63C54),
-        Color(0xFF39C3AB),
+        Color(0xFF000000),
         Color(0xFFC63C54),
       ],
       stops: const [0.0, 0.5, 1.0],
