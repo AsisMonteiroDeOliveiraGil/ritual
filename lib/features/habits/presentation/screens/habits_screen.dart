@@ -27,6 +27,7 @@ class HabitsScreen extends ConsumerWidget {
               return HabitCard(
                 habit: habit,
                 onTap: () => context.push('/habit/${habit.id}'),
+                onLongPress: () => context.push('/habit/${habit.id}/manage'),
                 trailing: completions.when(
                   data: (list) => SizedBox(
                     width: 80,

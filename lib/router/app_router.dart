@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ritual/features/habits/presentation/screens/habit_detail_screen.dart';
+import 'package:ritual/features/habits/presentation/screens/habit_manage_screen.dart';
 import 'package:ritual/features/habits/presentation/screens/add_habit_category_screen.dart';
 import 'package:ritual/features/habits/presentation/screens/habit_eval_type_screen.dart';
 import 'package:ritual/features/habits/presentation/screens/habit_define_screen.dart';
@@ -71,6 +72,13 @@ GoRouter buildAppRouter() {
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return HabitDetailScreen(habitId: id);
+        },
+      ),
+      GoRoute(
+        path: '/habit/:id/manage',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return HabitManageScreen(habitId: id);
         },
       ),
     ],

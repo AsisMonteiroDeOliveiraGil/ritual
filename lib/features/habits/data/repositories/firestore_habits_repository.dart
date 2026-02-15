@@ -65,6 +65,11 @@ class FirestoreHabitsRepository implements HabitsRepository {
     DateTime? startDate,
     DateTime? endDate,
     int? reminderCount,
+    List<String>? reminderTimes,
+    String? categoryLabel,
+    int? categoryColor,
+    int? categoryIconCodePoint,
+    String? frequencyLabel,
   }) {
     return _dataSource.createHabit(
       name: name,
@@ -78,7 +83,59 @@ class FirestoreHabitsRepository implements HabitsRepository {
       startDate: startDate,
       endDate: endDate,
       reminderCount: reminderCount,
+      reminderTimes: reminderTimes,
+      categoryLabel: categoryLabel,
+      categoryColor: categoryColor,
+      categoryIconCodePoint: categoryIconCodePoint,
+      frequencyLabel: frequencyLabel,
     );
+  }
+
+  @override
+  Future<void> updateHabit({
+    required String habitId,
+    String? name,
+    String? description,
+    int? priority,
+    DateTime? startDate,
+    DateTime? endDate,
+    bool setEndDate = false,
+    int? reminderCount,
+    List<String>? reminderTimes,
+    bool setReminderTimes = false,
+    String? categoryLabel,
+    int? categoryColor,
+    int? categoryIconCodePoint,
+    String? frequencyLabel,
+    bool? active,
+  }) {
+    return _dataSource.updateHabit(
+      habitId: habitId,
+      name: name,
+      description: description,
+      priority: priority,
+      startDate: startDate,
+      endDate: endDate,
+      setEndDate: setEndDate,
+      reminderCount: reminderCount,
+      reminderTimes: reminderTimes,
+      setReminderTimes: setReminderTimes,
+      categoryLabel: categoryLabel,
+      categoryColor: categoryColor,
+      categoryIconCodePoint: categoryIconCodePoint,
+      frequencyLabel: frequencyLabel,
+      active: active,
+    );
+  }
+
+  @override
+  Future<void> deleteHabit(String habitId) {
+    return _dataSource.deleteHabit(habitId);
+  }
+
+  @override
+  Future<void> resetHabitProgress(String habitId) {
+    return _dataSource.resetHabitProgress(habitId);
   }
 
   @override

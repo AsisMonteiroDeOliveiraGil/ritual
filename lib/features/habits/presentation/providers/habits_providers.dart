@@ -8,11 +8,14 @@ import 'package:ritual/features/habits/domain/entities/habit.dart';
 import 'package:ritual/features/habits/domain/entities/habit_stats.dart';
 import 'package:ritual/features/habits/domain/repositories/habits_repository.dart';
 import 'package:ritual/features/habits/domain/usecases/create_habit.dart';
+import 'package:ritual/features/habits/domain/usecases/delete_habit.dart';
 import 'package:ritual/features/habits/domain/usecases/delete_all_habits.dart';
 import 'package:ritual/features/habits/domain/usecases/get_habit_stats.dart';
 import 'package:ritual/features/habits/domain/usecases/mark_habit_done.dart';
+import 'package:ritual/features/habits/domain/usecases/reset_habit_progress.dart';
 import 'package:ritual/features/habits/domain/usecases/seed_habits_if_empty.dart';
 import 'package:ritual/features/habits/domain/usecases/unmark_habit_done.dart';
+import 'package:ritual/features/habits/domain/usecases/update_habit.dart';
 import 'package:ritual/features/habits/domain/usecases/watch_active_habits.dart';
 import 'package:ritual/features/habits/presentation/providers/auth_providers.dart';
 
@@ -52,6 +55,21 @@ final unmarkHabitDoneProvider = FutureProvider<UnmarkHabitDone>((ref) async {
 final createHabitProvider = FutureProvider<CreateHabit>((ref) async {
   final repo = await ref.watch(habitsRepositoryProvider.future);
   return CreateHabit(repo);
+});
+
+final updateHabitProvider = FutureProvider<UpdateHabit>((ref) async {
+  final repo = await ref.watch(habitsRepositoryProvider.future);
+  return UpdateHabit(repo);
+});
+
+final deleteHabitProvider = FutureProvider<DeleteHabit>((ref) async {
+  final repo = await ref.watch(habitsRepositoryProvider.future);
+  return DeleteHabit(repo);
+});
+
+final resetHabitProgressProvider = FutureProvider<ResetHabitProgress>((ref) async {
+  final repo = await ref.watch(habitsRepositoryProvider.future);
+  return ResetHabitProgress(repo);
 });
 
 final deleteAllHabitsProvider = FutureProvider<DeleteAllHabits>((ref) async {

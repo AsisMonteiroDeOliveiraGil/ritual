@@ -107,6 +107,11 @@ class FirestoreHabitsDataSource {
     DateTime? startDate,
     DateTime? endDate,
     int? reminderCount,
+    List<String>? reminderTimes,
+    String? categoryLabel,
+    int? categoryColor,
+    int? categoryIconCodePoint,
+    String? frequencyLabel,
   }) async {
     final docRef = _habitsRef.doc();
     final normalizedName = _normalizeKey(name);
@@ -139,7 +144,120 @@ class FirestoreHabitsDataSource {
     if (reminderCount != null) {
       payload['reminderCount'] = reminderCount;
     }
+    if (reminderTimes != null) {
+      payload['reminderTimes'] = reminderTimes;
+    }
+    if (categoryLabel != null) {
+      final trimmed = categoryLabel.trim();
+      if (trimmed.isEmpty) {
+        payload['categoryLabel'] = FieldValue.delete();
+        payload['categoryColor'] = FieldValue.delete();
+        payload['categoryIconCodePoint'] = FieldValue.delete();
+      } else {
+        payload['categoryLabel'] = trimmed;
+        if (categoryColor != null) {
+          payload['categoryColor'] = categoryColor;
+        }
+        if (categoryIconCodePoint != null) {
+          payload['categoryIconCodePoint'] = categoryIconCodePoint;
+        }
+      }
+    }
+    if (frequencyLabel != null) {
+      final trimmed = frequencyLabel.trim();
+      payload['frequencyLabel'] =
+          trimmed.isEmpty ? FieldValue.delete() : trimmed;
+    }
     await docRef.set(payload);
+  }
+
+  Future<void> updateHabit({
+    required String habitId,
+    String? name,
+    String? description,
+    int? priority,
+    DateTime? startDate,
+    DateTime? endDate,
+    bool setEndDate = false,
+    int? reminderCount,
+    List<String>? reminderTimes,
+    bool setReminderTimes = false,
+    String? categoryLabel,
+    int? categoryColor,
+    int? categoryIconCodePoint,
+    String? frequencyLabel,
+    bool? active,
+  }) async {
+    final payload = <String, dynamic>{
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    if (name != null) {
+      final trimmed = name.trim();
+      final safeName = trimmed.isEmpty ? 'Hábito' : trimmed;
+      payload['name'] = safeName;
+      payload['nameLower'] = _normalizeKey(safeName);
+    }
+    if (description != null) {
+      final trimmed = description.trim();
+      payload['description'] =
+          trimmed.isEmpty ? FieldValue.delete() : trimmed;
+    }
+    if (priority != null) {
+      payload['priority'] = priority;
+    }
+    if (startDate != null) {
+      payload['startDate'] = Timestamp.fromDate(startDate);
+    }
+    if (setEndDate) {
+      payload['endDate'] =
+          endDate == null ? FieldValue.delete() : Timestamp.fromDate(endDate);
+    }
+    if (reminderCount != null) {
+      payload['reminderCount'] = reminderCount;
+    }
+    if (setReminderTimes) {
+      payload['reminderTimes'] =
+          reminderTimes == null ? FieldValue.delete() : reminderTimes;
+      if (reminderTimes == null) {
+        payload['reminderCount'] = FieldValue.delete();
+      } else {
+        payload['reminderCount'] = reminderTimes.length;
+      }
+    }
+    if (categoryLabel != null) {
+      final trimmed = categoryLabel.trim();
+      if (trimmed.isEmpty) {
+        payload['categoryLabel'] = FieldValue.delete();
+        payload['categoryColor'] = FieldValue.delete();
+        payload['categoryIconCodePoint'] = FieldValue.delete();
+      } else {
+        payload['categoryLabel'] = trimmed;
+        if (categoryColor != null) {
+          payload['categoryColor'] = categoryColor;
+        }
+        if (categoryIconCodePoint != null) {
+          payload['categoryIconCodePoint'] = categoryIconCodePoint;
+        }
+      }
+    }
+    if (frequencyLabel != null) {
+      final trimmed = frequencyLabel.trim();
+      payload['frequencyLabel'] =
+          trimmed.isEmpty ? FieldValue.delete() : trimmed;
+    }
+    if (active != null) {
+      payload['active'] = active;
+    }
+    await _habitsRef.doc(habitId).update(payload);
+  }
+
+  Future<void> deleteHabit(String habitId) async {
+    await _habitsRef.doc(habitId).delete();
+    await _deleteCompletionsForHabit(habitId);
+  }
+
+  Future<void> resetHabitProgress(String habitId) async {
+    await _deleteCompletionsForHabit(habitId);
   }
 
   String _normalizeKey(String value) {
@@ -196,6 +314,27 @@ class FirestoreHabitsDataSource {
         batch.delete(doc.reference);
       }
       await batch.commit();
+    }
+  }
+
+  Future<void> _deleteCompletionsForHabit(String habitId) async {
+    const batchLimit = 200;
+    while (true) {
+      final snapshot = await _completionsRef
+          .where('habitId', isEqualTo: habitId)
+          .limit(batchLimit)
+          .get();
+      if (snapshot.docs.isEmpty) {
+        break;
+      }
+      final batch = firestore.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+      if (snapshot.docs.length < batchLimit) {
+        break;
+      }
     }
   }
 }

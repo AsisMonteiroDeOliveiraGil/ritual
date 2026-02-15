@@ -135,6 +135,7 @@ class AddHabitCategoryScreen extends ConsumerWidget {
                       onTap: () {
                         ref.read(newHabitDraftProvider.notifier).setCategory(
                               label: item.label,
+                              iconCodePoint: item.icon.codePoint,
                               iconName: item.iconName,
                               color: item.color.toARGB32(),
                             );

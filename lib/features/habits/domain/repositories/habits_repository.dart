@@ -23,7 +23,31 @@ abstract class HabitsRepository {
     DateTime? startDate,
     DateTime? endDate,
     int? reminderCount,
+    List<String>? reminderTimes,
+    String? categoryLabel,
+    int? categoryColor,
+    int? categoryIconCodePoint,
+    String? frequencyLabel,
   });
+  Future<void> updateHabit({
+    required String habitId,
+    String? name,
+    String? description,
+    int? priority,
+    DateTime? startDate,
+    DateTime? endDate,
+    bool setEndDate = false,
+    int? reminderCount,
+    List<String>? reminderTimes,
+    bool setReminderTimes = false,
+    String? categoryLabel,
+    int? categoryColor,
+    int? categoryIconCodePoint,
+    String? frequencyLabel,
+    bool? active,
+  });
+  Future<void> deleteHabit(String habitId);
+  Future<void> resetHabitProgress(String habitId);
   Future<void> deleteAllHabitsAndCompletions();
   Future<void> seedHabitsIfEmpty();
 }

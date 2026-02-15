@@ -6,12 +6,14 @@ class HabitCard extends StatelessWidget {
   final Habit habit;
   final Widget? trailing;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   const HabitCard({
     super.key,
     required this.habit,
     this.trailing,
     this.onTap,
+    this.onLongPress,
   });
 
   @override
@@ -22,6 +24,7 @@ class HabitCard extends StatelessWidget {
       color: color.withValues(alpha: 0.08),
       child: ListTile(
         onTap: onTap,
+        onLongPress: onLongPress,
         leading: CircleAvatar(
           backgroundColor: color.withValues(alpha: 0.2),
           child: Icon(iconFromName(habit.icon), color: color),

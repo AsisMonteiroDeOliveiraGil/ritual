@@ -203,7 +203,12 @@ class _HabitList extends StatelessWidget {
       });
 
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.fromLTRB(
+        0,
+        8,
+        0,
+        96 + MediaQuery.of(context).padding.bottom,
+      ),
       itemCount: sorted.length,
       separatorBuilder: (context, index) => Divider(
         height: 1,
@@ -220,6 +225,7 @@ class _HabitList extends StatelessWidget {
           onToggle: () {
             onToggle(habit, isDone);
           },
+          onLongPress: () => context.push('/habit/${habit.id}/manage'),
         );
       },
     );
@@ -230,11 +236,13 @@ class _HabitRow extends StatelessWidget {
   final Habit habit;
   final bool isDone;
   final VoidCallback onToggle;
+  final VoidCallback onLongPress;
 
   const _HabitRow({
     required this.habit,
     required this.isDone,
     required this.onToggle,
+    required this.onLongPress,
   });
 
   @override
@@ -244,6 +252,7 @@ class _HabitRow extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onToggle,
+      onLongPress: onLongPress,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(

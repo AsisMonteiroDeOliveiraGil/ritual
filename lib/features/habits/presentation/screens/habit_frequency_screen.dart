@@ -1,29 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ritual/features/habits/presentation/providers/new_habit_draft_provider.dart';
 
-class HabitFrequencyScreen extends StatefulWidget {
+class HabitFrequencyScreen extends ConsumerStatefulWidget {
   const HabitFrequencyScreen({super.key});
 
   @override
-  State<HabitFrequencyScreen> createState() => _HabitFrequencyScreenState();
+  ConsumerState<HabitFrequencyScreen> createState() =>
+      _HabitFrequencyScreenState();
 }
 
-class _HabitFrequencyScreenState extends State<HabitFrequencyScreen> {
+class _HabitFrequencyScreenState
+    extends ConsumerState<HabitFrequencyScreen> {
   int _selected = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    final draft = ref.read(newHabitDraftProvider);
+    _selected = _options.indexOf(draft.frequencyLabel);
+    if (_selected < 0) {
+      _selected = 0;
+    }
+  }
+
+  List<String> get _options => const [
+        'Cada día',
+        'Días específicos de la semana',
+        'Días específicos del mes',
+        'Días específicos del año',
+        'Algunos días por periodo',
+        'Repetir',
+      ];
 
   @override
   Widget build(BuildContext context) {
     const bg = Color(0xFF111111);
     const accent = Color(0xFFC63C54);
 
-    final options = [
-      'Cada día',
-      'Días específicos de la semana',
-      'Días específicos del mes',
-      'Días específicos del año',
-      'Algunos días por periodo',
-      'Repetir',
-    ];
+    final options = _options;
 
     return Scaffold(
       backgroundColor: bg,
@@ -52,16 +68,22 @@ class _HabitFrequencyScreenState extends State<HabitFrequencyScreen> {
                   return _RadioRow(
                     label: options[index],
                     selected: selected,
-                    onTap: () => setState(() => _selected = index),
+                    onTap: () {
+                      setState(() => _selected = index);
+                      ref
+                          .read(newHabitDraftProvider.notifier)
+                          .setFrequencyLabel(options[index]);
+                    },
                   );
                 },
               ),
             ),
             _BottomBar(
               onNext: () {
-                if (_selected == 0) {
-                  context.push('/habit/new/schedule');
-                }
+                ref
+                    .read(newHabitDraftProvider.notifier)
+                    .setFrequencyLabel(options[_selected]);
+                context.push('/habit/new/schedule');
               },
             ),
           ],
